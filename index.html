@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Color Tracker PWA</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+  <style>
+    @font-face {
+      font-family: 'Liberation Serif';
+      src: local('Liberation Serif Bold'), local('LiberationSerif-Bold');
+      font-weight: bold;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg-color: #2b1118;
+      --surface-color: #421822;
+      --primary-color: #ffd8d9;
+      --on-primary-color: #4b0014;
+      --cell-empty: #55212c;
+      --cell-missed: #808080;
+      --text-color: #ffd8d9;
+    }
+
+    @keyframes gradientAnimation {
+      0% {
+        background-position: 0% 50%, 50% 50%;
+      }
+      50% {
+        background-position: 100% 50%, 30% 70%;
+      }
+      100% {
+        background-position: 0% 50%, 50% 50%;
+      }
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      /* Анімований рухомий фон з радіальними градієнтами на весь екран */
+      background: radial-gradient(circle at 20% 30%, var(--surface-color) 0%, transparent 60%),
+                  radial-gradient(circle at 80% 70%, var(--bg-color) 0%, #080204 70%);
+      background-size: 200% 200%;
+      animation: gradientAnimation 15s ease infinite;
+      font-family: 'Liberation Serif', serif;
+      font-weight: bold;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #app-container {
+      width: calc(100% - 40px);
+      max-width: 440px;
+      height: calc(100vh - 40px);
+      max-height: 860px;
+      background-color: var(--bg-color);
+      position: relative;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      gap: 16px;
+      border-radius: 28px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: background-color 0.4s ease;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-color);
+      font-size: 24px;
+    }
+
+    .calendar-wrapper {
+      background-color: var(--surface-color);
+      border-radius: 20px;
+      padding: 12px;
+      transition: background-color 0.4s ease;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .day-cell {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      background-color: var(--cell-empty);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--text-color);
+      font-size: 15px;
+      cursor: pointer;
+      transition: transform 0.15s ease, background-color 0.3s ease;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .day-cell:active {
+      transform: scale(0.92);
+    }
+
+    .day-cell.missed {
+      background-color: var(--cell-missed) !important;
+    }
+
+    .day-cell.future {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .buttons-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .btn-custom {
+      flex: 1;
+      height: 56px;
+      background-color: var(--primary-color);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      padding: 6px;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.1s ease, opacity 0.2s ease;
+    }
+
+    .btn-custom:active {
+      transform: scale(0.98);
+    }
+
+    .btn-toggle-square {
+      width: 56px;
+      height: 56px;
+      background-color: var(--primary-color);
+      border-radius: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.1s ease;
+    }
+
+    .btn-toggle-square:active {
+      transform: scale(0.94);
+    }
+
+    .btn-icon-square {
+      width: 44px;
+      height: 44px;
+      background-color: var(--bg-color);
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--text-color);
+      flex-shrink: 0;
+      transition: background-color 0.4s ease;
+    }
+
+    .btn-icon-square .material-symbols-outlined,
+    .btn-toggle-square .material-symbols-outlined {
+      font-size: 26px;
+    }
+
+    .btn-toggle-square .material-symbols-outlined {
+      color: var(--on-primary-color);
+    }
+
+    .btn-text {
+      margin-left: 12px;
+      font-size: 16px;
+      color: var(--on-primary-color);
+      font-family: 'Liberation Serif', serif;
+      font-weight: bold;
+    }
+
+    .settings-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-color);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transform: translateX(100%);
+      transition: transform 0.3s ease, background-color 0.4s ease;
+      z-index: 10;
+    }
+
+    .settings-screen.active {
+      transform: translateX(0);
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .btn-icon-back {
+      width: 44px;
+      height: 44px;
+      background-color: var(--primary-color);
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      border: none;
+      color: var(--on-primary-color);
+    }
+
+    .color-picker-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      background-color: var(--bg-color);
+    }
+
+    .color-picker-screen.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .hsv-wheel-wrapper {
+      position: relative;
+      width: 240px;
+      height: 240px;
+    }
+
+    #hsv-canvas {
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    #hsv-picker-dot {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 3px solid #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      top: 50%;
+      left: 50%;
+    }
+
+    .brightness-slider-container {
+      width: 80%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+    }
+
+    .brightness-slider-container input {
+      flex: 1;
+      height: 8px;
+      border-radius: 4px;
+      accent-color: var(--primary-color);
+    }
+
+    .confirm-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background-color: rgba(255,255,255,0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    .confirm-btn .material-symbols-outlined {
+      font-size: 36px;
+      color: #000;
+    }
+
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 30;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-box {
+      position: relative;
+      width: 100%;
+      background-color: var(--bg-color);
+      border: 2px solid var(--primary-color);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      color: var(--text-color);
+      z-index: 31;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+
+    .modal-title {
+      font-size: 20px;
+    }
+
+    .modal-input {
+      width: 100%;
+      height: 90px;
+      background-color: var(--surface-color);
+      border: none;
+      border-radius: 12px;
+      padding: 10px;
+      color: #fff;
+      font-size: 15px;
+      font-family: 'Liberation Serif', serif;
+      resize: none;
+      outline: none;
+    }
+
+    .modal-text-content {
+      font-size: 16px;
+      line-height: 1.4;
+      background-color: var(--surface-color);
+      padding: 14px;
+      border-radius: 12px;
+      min-height: 60px;
+      color: #fff;
+      font-weight: normal;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-modal-action {
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: none;
+      background-color: var(--primary-color);
+      color: var(--on-primary-color);
+      font-family: 'Liberation Serif', serif;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app-container">
+    <div class="header-bar">
+      <span id="month-year-label">Листопад 2026</span>
+      <span class="material-symbols-outlined" style="font-size: 32px;">palette</span>
+    </div>
+
+    <div class="calendar-wrapper">
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </div>
+
+    <div class="buttons-container">
+      <button class="btn-custom" id="btn-download">
+        <div class="btn-icon-square">
+          <span class="material-symbols-outlined">download</span>
+        </div>
+        <span class="btn-text">Завантажити</span>
+      </button>
+
+      <button class="btn-custom" id="btn-pick-today">
+        <div class="btn-icon-square">
+          <span class="material-symbols-outlined">format_paint</span>
+        </div>
+        <span class="btn-text">Обрати колір</span>
+      </button>
+
+      <button class="btn-custom" id="btn-settings">
+        <div class="btn-icon-square">
+          <span class="material-symbols-outlined">settings</span>
+        </div>
+        <span class="btn-text">Налаштування</span>
+      </button>
+    </div>
+
+    <div class="settings-screen" id="settings-screen">
+      <div class="settings-header">
+        <button class="btn-icon-back" id="btn-back">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <span style="font-size: 22px; color: var(--text-color);">Налаштування</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-custom" id="btn-notif-label">
+          <div class="btn-icon-square">
+            <span class="material-symbols-outlined">notifications</span>
+          </div>
+          <span class="btn-text">Сповіщення</span>
+        </button>
+        <button class="btn-toggle-square" id="btn-toggle-notif">
+          <span class="material-symbols-outlined" id="icon-notif">toggle_on</span>
+        </button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-custom" id="btn-theme-action">
+          <div class="btn-icon-square">
+            <span class="material-symbols-outlined">palette</span>
+          </div>
+          <span class="btn-text" id="text-theme-mode">Тема: Динамічна</span>
+        </button>
+        <button class="btn-toggle-square" id="btn-toggle-theme-mode">
+          <span class="material-symbols-outlined" id="icon-theme-mode">auto_mode</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="color-picker-screen" id="color-picker-screen">
+      <div class="hsv-wheel-wrapper">
+        <canvas id="hsv-canvas" width="240" height="240"></canvas>
+        <div id="hsv-picker-dot"></div>
+      </div>
+
+      <div class="brightness-slider-container">
+        <span class="material-symbols-outlined">light_mode</span>
+        <input type="range" id="brightness-slider" min="0.2" max="1.0" step="0.01" value="1.0">
+      </div>
+
+      <div class="confirm-btn" id="btn-confirm-color">
+        <span class="material-symbols-outlined">check</span>
+      </div>
+    </div>
+
+    <!-- Модальне вікно введення опису -->
+    <div class="modal-overlay" id="modal-input-overlay">
+      <div class="modal-box">
+        <div class="modal-title" id="modal-input-title">Опис дня</div>
+        <textarea class="modal-input" id="modal-input-field" placeholder="Напишіть короткий опис..."></textarea>
+        <div class="modal-buttons">
+          <button class="btn-modal-action" id="btn-modal-save">Зберегти</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальне вікно лише для перегляду -->
+    <div class="modal-overlay" id="modal-alert-overlay">
+      <div class="modal-box">
+        <div class="modal-title" id="modal-alert-title">Інформація</div>
+        <div class="modal-text-content" id="modal-alert-text"></div>
+        <div class="modal-buttons">
+          <button class="btn-modal-action" id="btn-modal-alert-close">Закрити</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let appState = {
+      notificationsEnabled: true,
+      dynamicTheme: true,
+      customColor: "#ff0055",
+      colors: {},
+      selectedDay: null,
+      currentPickerColor: "#ff0055",
+      isCustomThemePicking: false,
+      
+      dayHue: 0, daySat: 0, dayVal: 1.0,
+      interfaceHue: 0.95, interfaceSat: 0.8, interfaceVal: 1.0
+    };
+
+    const saved = localStorage.getItem('color_tracker_pwa_data');
+    if (saved) {
+      try { appState = Object.assign(appState, JSON.parse(saved)); } catch(e){}
+    }
+
+    function saveData() {
+      localStorage.setItem('color_tracker_pwa_data', JSON.stringify(appState));
+    }
+
+    const calendarGrid = document.getElementById('calendar-grid');
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const todayDate = now.getDate();
+
+    const monthNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
+    document.getElementById('month-year-label').innerText = `${monthNames[currentMonth]} ${currentYear}`;
+
+    function renderCalendar() {
+      calendarGrid.innerHTML = '';
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const cell = document.createElement('div');
+        cell.className = 'day-cell';
+        cell.innerText = d;
+
+        if (appState.colors[dateKey]) {
+          cell.style.backgroundColor = appState.colors[dateKey].color;
+        } else if (d < todayDate) {
+          cell.classList.add('missed');
+        } else if (d > todayDate) {
+          cell.classList.add('future');
+        }
+
+        cell.addEventListener('click', () => {
+          if (d > todayDate) {
+            showAlertModal("Увага", "Неможливо вибрати колір для майбутнього дня!");
+            return;
+          }
+
+          appState.selectedDay = dateKey;
+          if (appState.colors[dateKey]) {
+            showAlertModal(`День ${d}`, appState.colors[dateKey].note || "Колір вже вибрано для цього дня. Зміна неможлива.");
+          } else {
+            openColorPicker(dateKey, false);
+          }
+        });
+
+        calendarGrid.appendChild(cell);
+      }
+    }
+
+    function applyDynamicColor(hexColor) {
+      if (!hexColor) return;
+      let r = parseInt(hexColor.slice(1,3), 16);
+      let g = parseInt(hexColor.slice(3,5), 16);
+      let b = parseInt(hexColor.slice(5,7), 16);
+
+      let bgR = Math.floor(r * 0.2);
+      let bgG = Math.floor(g * 0.2);
+      let bgB = Math.floor(b * 0.2);
+
+      let surfR = Math.floor(r * 0.35);
+      let surfG = Math.floor(g * 0.35);
+      let surfB = Math.floor(b * 0.35);
+
+      document.documentElement.style.setProperty('--bg-color', `rgb(${bgR}, ${bgG}, ${bgB})`);
+      document.documentElement.style.setProperty('--surface-color', `rgb(${surfR}, ${surfG}, ${surfB})`);
+      document.documentElement.style.setProperty('--cell-empty', `rgb(${Math.floor(r*0.45)}, ${Math.floor(g*0.45)}, ${Math.floor(b*0.45)})`);
+      document.documentElement.style.setProperty('--primary-color', hexColor);
+      document.documentElement.style.setProperty('--text-color', '#ffffff');
+      document.documentElement.style.setProperty('--on-primary-color', '#000000');
+
+      // Динамічний анімований фон на основі поточної палітри кольорів
+      document.body.style.background = `
+        radial-gradient(circle at 20% 30%, rgb(${surfR}, ${surfG}, ${surfB}) 0%, transparent 60%),
+        radial-gradient(circle at 80% 70%, rgb(${bgR}, ${bgG}, ${bgB}) 0%, #050102 70%)
+      `;
+      document.body.style.backgroundSize = "200% 200%";
+      document.body.style.animation = "gradientAnimation 15s ease infinite";
+    }
+
+    function syncAppTheme() {
+      const todayKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(todayDate).padStart(2, '0')}`;
+      if (appState.dynamicTheme) {
+        if (appState.colors[todayKey]) {
+          applyDynamicColor(appState.colors[todayKey].color);
+        } else {
+          applyDynamicColor("#ff0055");
+        }
+      } else {
+        applyDynamicColor(appState.customColor);
+      }
+    }
+
+    const hsvCanvas = document.getElementById('hsv-canvas');
+    const ctx = hsvCanvas.getContext('2d');
+    const pickerDot = document.getElementById('hsv-picker-dot');
+    const brightnessSlider = document.getElementById('brightness-slider');
+
+    let currentHue = 0, currentSat = 0;
+
+    function drawHSVWheel() {
+      const size = hsvCanvas.width;
+      const radius = size / 2;
+      const imgData = ctx.createImageData(size, size);
+      const data = imgData.data;
+
+      for (let x = -radius; x < radius; x++) {
+        for (let y = -radius; y < radius; y++) {
+          const dist = Math.sqrt(x * x + y * y);
+          if (dist <= radius) {
+            const angle = Math.atan2(y, x) + Math.PI;
+            const hue = angle / (2 * Math.PI);
+            const sat = dist / radius;
+            const rgb = hsvToRgb(hue, sat, parseFloat(brightnessSlider.value));
+
+            const index = ((Math.floor(y + radius)) * size + Math.floor(x + radius)) * 4;
+            data[index] = rgb[0];
+            data[index + 1] = rgb[1];
+            data[index + 2] = rgb[2];
+            data[index + 3] = 255;
+          }
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function hsvToRgb(h, s, v) {
+      let r, g, b;
+      let i = Math.floor(h * 6);
+      let f = h * 6 - i;
+      let p = v * (1 - s);
+      let q = v * (1 - f * s);
+      let t = v * (1 - (1 - f) * s);
+      switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+      }
+      return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
+    drawHSVWheel();
+    brightnessSlider.addEventListener('input', () => {
+      drawHSVWheel();
+      updateColorFromCurrentPos();
+    });
+
+    const colorPickerScreen = document.getElementById('color-picker-screen');
+    
+    function openColorPicker(dateKey, isInterface = false) {
+      appState.selectedDay = dateKey;
+      appState.isCustomThemePicking = isInterface;
+
+      if (isInterface) {
+        currentHue = appState.interfaceHue;
+        currentSat = appState.interfaceSat;
+        brightnessSlider.value = appState.interfaceVal;
+      } else {
+        currentHue = appState.dayHue;
+        currentSat = appState.daySat;
+        brightnessSlider.value = appState.dayVal;
+      }
+
+      const radius = hsvCanvas.width / 2;
+      const angle = currentHue * 2 * Math.PI - Math.PI;
+      const dist = currentSat * radius;
+      const x = Math.cos(angle) * dist;
+      const y = Math.sin(angle) * dist;
+
+      pickerDot.style.left = `${x + radius}px`;
+      pickerDot.style.top = `${y + radius}px`;
+
+      drawHSVWheel();
+      updateColorFromCurrentPos();
+
+      colorPickerScreen.classList.add('active');
+    }
+
+    function updateColorFromCoords(clientX, clientY) {
+      const rect = hsvCanvas.getBoundingClientRect();
+      const radius = rect.width / 2;
+      let x = clientX - rect.left - radius;
+      let y = clientY - rect.top - radius;
+      const dist = Math.sqrt(x * x + y * y);
+
+      if (dist > radius) {
+        x = (x / dist) * radius;
+        y = (y / dist) * radius;
+      }
+
+      pickerDot.style.left = `${x + radius}px`;
+      pickerDot.style.top = `${y + radius}px`;
+
+      const angle = Math.atan2(y, x) + Math.PI;
+      currentHue = angle / (2 * Math.PI);
+      currentSat = Math.min(dist / radius, 1.0);
+
+      updateColorFromCurrentPos();
+    }
+
+    function updateColorFromCurrentPos() {
+      const val = parseFloat(brightnessSlider.value);
+      const rgb = hsvToRgb(currentHue, currentSat, val);
+      const hex = "#" + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1);
+      appState.currentPickerColor = hex;
+
+      if (appState.isCustomThemePicking) {
+        appState.interfaceHue = currentHue;
+        appState.interfaceSat = currentSat;
+        appState.interfaceVal = val;
+        applyDynamicColor(hex);
+      } else {
+        appState.dayHue = currentHue;
+        appState.daySat = currentSat;
+        appState.dayVal = val;
+        colorPickerScreen.style.backgroundColor = hex;
+      }
+    }
+
+    let isDragging = false;
+    hsvCanvas.addEventListener('mousedown', (e) => { isDragging = true; updateColorFromCoords(e.clientX, e.clientY); });
+    window.addEventListener('mousemove', (e) => { if (isDragging) updateColorFromCoords(e.clientX, e.clientY); });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    hsvCanvas.addEventListener('touchstart', (e) => { isDragging = true; updateColorFromCoords(e.touches[0].clientX, e.touches[0].clientY); });
+    window.addEventListener('touchmove', (e) => { if (isDragging) updateColorFromCoords(e.touches[0].clientX, e.touches[0].clientY); });
+    window.addEventListener('touchend', () => { isDragging = false; });
+
+    document.getElementById('btn-confirm-color').addEventListener('click', () => {
+      colorPickerScreen.classList.remove('active');
+      if (appState.isCustomThemePicking) {
+        appState.customColor = appState.currentPickerColor;
+        saveData();
+      } else if (appState.selectedDay) {
+        appState.colors[appState.selectedDay] = { color: appState.currentPickerColor, note: "" };
+        saveData();
+        renderCalendar();
+        syncAppTheme();
+        showInputModal("Опис кольору", "");
+      }
+    });
+
+    const modalInputOverlay = document.getElementById('modal-input-overlay');
+    const modalAlertOverlay = document.getElementById('modal-alert-overlay');
+
+    function showInputModal(title, text) {
+      document.getElementById('modal-input-title').innerText = title;
+      document.getElementById('modal-input-field').value = text;
+      modalInputOverlay.classList.add('active');
+    }
+
+    function showAlertModal(title, text) {
+      document.getElementById('modal-alert-title').innerText = title;
+      document.getElementById('modal-alert-text').innerText = text;
+      modalAlertOverlay.classList.add('active');
+    }
+
+    document.getElementById('btn-modal-save').addEventListener('click', () => {
+      const input = document.getElementById('modal-input-field');
+      if (appState.selectedDay && appState.colors[appState.selectedDay]) {
+        appState.colors[appState.selectedDay].note = input.value;
+        saveData();
+      }
+      modalInputOverlay.classList.remove('active');
+    });
+
+    document.getElementById('btn-modal-alert-close').addEventListener('click', () => {
+      modalAlertOverlay.classList.remove('active');
+    });
+
+    const settingsScreen = document.getElementById('settings-screen');
+    document.getElementById('btn-settings').addEventListener('click', () => settingsScreen.classList.add('active'));
+    document.getElementById('btn-back').addEventListener('click', () => settingsScreen.classList.remove('active'));
+
+    function updateSettingsUI() {
+      document.getElementById('icon-notif').innerText = appState.notificationsEnabled ? 'toggle_on' : 'toggle_off';
+      document.getElementById('text-theme-mode').innerText = appState.dynamicTheme ? 'Тема: Динамічна' : 'Тема: Ручна';
+      document.getElementById('icon-theme-mode').innerText = appState.dynamicTheme ? 'auto_mode' : 'tune';
+    }
+
+    document.getElementById('btn-toggle-notif').addEventListener('click', () => {
+      appState.notificationsEnabled = !appState.notificationsEnabled;
+      updateSettingsUI();
+      saveData();
+    });
+
+    document.getElementById('btn-toggle-theme-mode').addEventListener('click', () => {
+      appState.dynamicTheme = !appState.dynamicTheme;
+      updateSettingsUI();
+      syncAppTheme();
+      saveData();
+    });
+
+    document.getElementById('btn-theme-action').addEventListener('click', () => {
+      if (!appState.dynamicTheme) {
+        openColorPicker(null, true);
+      } else {
+        showAlertModal("Налаштування теми", "Перемкніть квадрант праворуч у ручний режим, щоб вибрати довільний колір теми!");
+      }
+    });
+
+    document.getElementById('btn-pick-today').addEventListener('click', () => {
+      const todayKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(todayDate).padStart(2, '0')}`;
+      appState.selectedDay = todayKey;
+      if (appState.colors[todayKey]) {
+        showAlertModal(`День ${todayDate}`, appState.colors[todayKey].note || "Колір вже вибрано для цього дня. Зміна неможлива.");
+      } else {
+        openColorPicker(todayKey, false);
+      }
+    });
+
+    document.getElementById('btn-download').addEventListener('click', () => {
+      let mosaicHTML = `<html><head><title>Mosaic</title><style>
+        body { background: #111; display: grid; grid-template-columns: repeat(7, 40px); gap: 8px; padding: 30px; justify-content: center; }
+        .sq { width: 40px; height: 40px; border-radius: 8px; background: #333; }
+      </style></head><body>`;
+
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const color = appState.colors[dateKey] ? appState.colors[dateKey].color : (d < todayDate ? '#808080' : '#333333');
+        mosaicHTML += `<div class="sq" style="background:${color}"></div>`;
+      }
+      mosaicHTML += `</body></html>`;
+
+      const blob = new Blob([mosaicHTML], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `mosaic-${currentMonth+1}-${currentYear}.html`;
+      a.click();
+    });
+
+    updateSettingsUI();
+    renderCalendar();
+    syncAppTheme();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('Service Worker зареєстровано!'))
+        .catch((err) => console.log('Помилка реєстрації SW:', err));
+    }
+  </script>
+</body>
+</html>
